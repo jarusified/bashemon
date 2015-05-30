@@ -1,23 +1,37 @@
 #!/bin/sh
 
+abort(){
+	echo $@
+	exit 1
+}
+
+monitor(){
+	temp_file="` mktemp /tmp/monitor.XXXXXX`"
+	cp "$1" "$temp_file"
+	trap "rm $temp_file; exit 1" 2
+	while : ; do
+		if [ "$1" -nt "$temp_file" ]; then
+			cp "$1" "$temp_file"
+			$2
+		fi
+		sleep 2
+	done
+}
+
 file_name=$1
 shift
 command=$*
 if [[ -z "$file_name" ]]; then
-	echo >&2 "ParseError: File to be monitored is not specified as an argument"
-	exit 1
+	abort "ParseError: File to be monitored is not specified as an argument"
+
 fi
+
 if [[ -z "$command" ]]; then
-	echo >&2 "PareseError: Command not specified."
-	exit 1
+	abort "PareseError: Command not specified."
 fi
-temp_file="` mktemp /tmp/monitor.XXXXXX`"
-cp "$file_name" "$temp_file"
-trap "rm $temp_file; exit 1" 2
-while : ; do
-	if [ "$file_name" -nt "$temp_file" ]; then
-		cp "$file_name" "$temp_file"
-		$command
-	fi
-	sleep 2
-done
+
+if [ ${file_name:-4} == "*.sw[px]" ];then
+	abort ""
+else
+	monitor $file_name $command
+fi
